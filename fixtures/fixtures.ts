@@ -24,8 +24,6 @@ export const test = base.extend<Fixtures>({
         const registerPage = new RegisterPage(page);
         await page.goto(BASE_URL)
         await menuHeader.openRegisterPage();
-        await homePage.selectCurrency("US Dollar");
-        await homePage.selectLanguage("English");
         await use(registerPage);
     },
     loginPage: async ({ page }, use) => {
