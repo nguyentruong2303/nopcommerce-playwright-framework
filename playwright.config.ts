@@ -26,7 +26,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-     baseURL: 'http://localhost:8080',
+     baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -72,8 +72,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
  webServer: {
-    command: 'npm run dev', // Lệnh để khởi động server của bạn (ví dụ: npm run dev, pnpm start,...)
-    url: 'http://localhost:8080', // URL mà website của bạn sẽ chạy
+    command: 'pnpm start', // Lệnh để khởi động server của bạn (ví dụ: npm run dev, pnpm start,...)
+    url: 'http://localhost:3000', // URL mà website của bạn sẽ chạy
     reuseExistingServer: !process.env.CI, // Ở local thì dùng lại server đang mở, trên CI thì khởi động mới
     stdout: 'ignore',
     stderr: 'pipe',
