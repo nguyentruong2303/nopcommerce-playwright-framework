@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      # 1. Database
       sqlserver:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
@@ -19,39 +20,21 @@ jobs:
         ports:
           - 1433:1433
 
+      # 2. Web App
       nopcommerce:
         image: nopcommerceteam/nopcommerce:latest
         ports:
           - 59580:80
         env:
           ASPNETCORE_ENVIRONMENT: Development
-          # ÉP APP BỎ QUA MÀN HÌNH INSTALL BẰNG BIẾN MÔI TRƯỜNG
-          # (Lưu ý: Các biến này bắt đầu bằng NOP_...)
+          # Cấu hình tự động cài đặt - Quan trọng nhất
+          # Data Source=sqlserver (tên service ở trên)
           NOP_DB_CONNECTION_STRING: "Data Source=sqlserver;Initial Catalog=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True"
           NOP_DB_PROVIDER: "sqlserver"
-          # Tự động cài đặt dữ liệu mẫu (Sample data) để có nút Register mà test
           NOP_INSTALL_SAMPLE_DATA: "True"
 
     steps:
     - uses: actions/checkout@v4
-
-    # BƯỚC QUAN TRỌNG: Đưa cấu hình vào container để tránh lỗi Permission
-    - name: Configure nopCommerce Settings
-      run: |
-        sleep 10
-        # Tìm ID của container nopcommerce
-        CONTAINER_ID=$(docker ps -qf "ancestor=nopcommerceteam/nopcommerce:latest")
-        
-        # Tạo thư mục App_Data nếu chưa có (phòng xa)
-        docker exec -u root $CONTAINER_ID mkdir -p /app/App_Data
-        
-        # Copy file cấu hình vào
-        docker cp ci/dataSettings.json $CONTAINER_ID:/app/App_Data/dataSettings.json
-        
-        # Cấp quyền đọc/ghi toàn diện cho thư mục App_Data
-        docker exec -u root $CONTAINER_ID chmod -R 777 /app/App_Data/
-        
-        echo "Configuration injected and permissions granted!"
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -71,18 +54,13 @@ jobs:
 
     - name: Wait for nopCommerce to be ready
       run: |
-        echo "Waiting for nopCommerce to start (this can take 1-2 mins)..."
-        # Thử kết nối đến khi web phản hồi
-        timeout 300 bash -c 'until curl -sSf http://localhost:59580 > /dev/null; do echo "Waiting..."; sleep 5; done'
-        echo "nopCommerce is up and running!"
+        echo "Waiting for nopCommerce to initialize database..."
+        # Tăng thời gian chờ vì nopCommerce tạo bảng rất lâu (khoảng 2-3 phút)
+        timeout 400 bash -c 'until curl -sSf http://localhost:59580 > /dev/null; do echo "Initializing DB..."; sleep 10; done'
+        echo "nopCommerce is ready!"
 
-    - name: Debug nopCommerce Page Content
-      run: |
-        echo "Checking what is actually on the page..."
-        # Lấy tiêu đề trang
-        curl -s http://localhost:59580 | grep -oP '(?<=<title>).*?(?=</title>)' || echo "No title found"
-        # Nếu muốn xem tại sao lỗi, in 50 dòng đầu của trang
-        curl -s http://localhost:59580 | head -n 50
+    - name: Debug Final Page
+      run: curl -s http://localhost:59580 | head -n 20
 
     - name: Run Playwright tests
       run: pnpm exec playwright test
