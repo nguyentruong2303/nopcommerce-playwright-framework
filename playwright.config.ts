@@ -70,13 +70,13 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-webServer: {
-  command: 'dotnet run --project "../nopCommerce_4.90.3_Source/src/Presentation/Nop.Web/Nop.Web.csproj"',
-  url: 'http://localhost:59580',
-  reuseExistingServer: !process.env.CI,
-  timeout: 180 * 1000, // 3 phút
-  stdout: 'pipe',
-  stderr: 'pipe',
-},
+// webServer: {
+//   command: 'dotnet run --project "D:/learn/LearnAuto/nopCommerce/src/Presentation/Nop.Web/Nop.Web.csproj"',
+//   url: 'http://localhost:59580',
+//   reuseExistingServer: !process.env.CI,
+//   timeout: 180 * 1000, // 3 phút
+//   stdout: 'pipe',
+//   stderr: 'pipe',
+// },
   
 });

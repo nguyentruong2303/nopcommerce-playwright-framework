@@ -1,0 +1,4 @@
+{
+  "DbConnectionString": "Data Source=sqlserver;Initial Catalog=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True",
+  "DataProvider": "sqlserver"
+}
