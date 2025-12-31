@@ -12,8 +12,8 @@ importers:
         specifier: ^1.57.0
         version: 1.57.0
       '@types/node':
-        specifier: ^24.10.1
-        version: 24.10.1
+        specifier: ^24.10.4
+        version: 24.10.4
       allure-playwright:
         specifier: ^3.4.3
         version: 3.4.3(@playwright/test@1.57.0)
@@ -25,8 +25,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@types/node@24.10.1':
-    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
+  '@types/node@24.10.4':
+    resolution: {integrity: sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==}
 
   allure-js-commons@3.4.3:
     resolution: {integrity: sha512-2n2uUFVmI7OaKXfkUPq2AcD1ksPR/WXZ9IhmQlMylb8bNpPChn1QPA/W97+RDYawFgvfhnadzIrH9ZWTWKjiNg==}
@@ -77,7 +77,7 @@ snapshots:
     dependencies:
       playwright: 1.57.0
 
-  '@types/node@24.10.1':
+  '@types/node@24.10.4':
     dependencies:
       undici-types: 7.16.0
 
