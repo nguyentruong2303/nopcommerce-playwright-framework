@@ -36,11 +36,12 @@ jobs:
 
     - name: Start nopCommerce Container
       run: |
-
-        echo "Getting SQL Server container IP..."
+        echo "Getting SQL Server container info..."
         SQL_CONTAINER=$(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest")
+        SQL_NETWORK=$(docker inspect $SQL_CONTAINER -f '{{range $net, $conf := .NetworkSettings.Networks}}{{$net}}{{end}}')
         SQL_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $SQL_CONTAINER)
         
+        echo "SQL Server Network: $SQL_NETWORK"
         echo "SQL Server IP: $SQL_IP"
         echo "SQL_SERVER_IP=$SQL_IP" >> $GITHUB_ENV
 
@@ -49,6 +50,7 @@ jobs:
         
         docker run -d \
           --name nop_app \
+          --network $SQL_NETWORK \
           -p 5000:80 \
           --restart unless-stopped \
           nopcommerceteam/nopcommerce:latest
