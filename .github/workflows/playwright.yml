@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    timeout-minutes: 30
+    timeout-minutes: 20
     runs-on: ubuntu-latest
 
     services:
@@ -22,66 +22,61 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # BƯỚC 1: Tạo file cấu hình để Skip Install
+    # BƯỚC 1: Tạo file cấu hình ở thư mục tạm trên Runner
     - name: Create nopCommerce Configuration
       run: |
-        mkdir -p App_Data
+        mkdir -p $(pwd)/temp_configs
         echo '{
           "DataConfig": {
             "DataProvider": "sqlserver",
             "ConnectionString": "Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False",
             "Dbms": "sqlserver"
           }
-        }' > App_Data/dataSettings.json
+        }' > $(pwd)/temp_configs/dataSettings.json
 
-    # BƯỚC 2: Tạo Database và ép App không phải chạy Migration nặng
-    - name: Prepare Database
+    # BƯỚC 2: Tạo Database rỗng
+    - name: Pre-create Database
       run: |
-        # Chờ SQL Server thực sự sống
         sleep 20
-        # Tạo DB rỗng
         docker exec $(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest") /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Can@922946" -Q "CREATE DATABASE [nopCommerce];" -C
 
-    # BƯỚC 3: Chạy App với RAM tối ưu
+    # BƯỚC 3: Chạy App với lệnh COPY file thay vì MOUNT file trực tiếp
     - name: Run nopCommerce
       run: |
+        # Khởi chạy container mà không mount file cấu hình trực tiếp để tránh "Resource busy"
         docker run -d \
           --name nop_app \
           --network host \
-          -v $(pwd)/App_Data/dataSettings.json:/app/App_Data/dataSettings.json \
           -e ASPNETCORE_ENVIRONMENT=Production \
-          -e DOTNET_PRINT_TELEMETRY_MESSAGE=false \
           nopcommerceteam/nopcommerce:latest
         
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
+        # Đợi 2 giây cho container khởi tạo thư mục rồi chép file vào
+        sleep 5
+        docker cp $(pwd)/temp_configs/dataSettings.json nop_app:/app/App_Data/dataSettings.json
+        
+        # Restart lại container để nó nhận file cấu hình mới mà không bị khóa file
+        docker restart nop_app
 
-    - name: Install pnpm & Playwright
+    - name: Setup Node & Playwright
       run: |
         npm install -g pnpm
         pnpm install
         pnpm exec playwright install --with-deps chromium
 
-    # BƯỚC 4: Kiểm tra thông minh hơn
-    - name: Wait for App (Max 5 mins)
+    # BƯỚC 4: Kiểm tra trạng thái (Sẽ nhanh hơn rất nhiều)
+    - name: Wait for App ready
       run: |
-        echo "Check log initial..."
-        sleep 30
-        docker logs nop_app --tail 50
-        
-        # Thử kết nối, nếu lỗi thì in log ra ngay để biết tại sao
-        for i in {1..30}; do
+        echo "Waiting for nopCommerce to recognize the database..."
+        for i in {1..20}; do
           if curl -s http://localhost:80 | grep -q "nopCommerce"; then
-            echo "Success: nopCommerce is UP!"
+            echo "SUCCESS: nopCommerce is LIVE!"
             exit 0
           fi
-          echo "Attempt $i: App is still loading tables... (Wait 10s)"
-          docker logs nop_app --tail 3
+          echo "Attempt $i: App is still starting (Wait 10s)..."
+          docker logs nop_app --tail 5
           sleep 10
         done
-        echo "Timeout! Showing logs for debugging:"
+        echo "FAILED: App did not start in time."
         docker logs nop_app
         exit 1
 
