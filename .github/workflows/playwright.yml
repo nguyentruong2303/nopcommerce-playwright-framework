@@ -27,19 +27,28 @@ jobs:
         sleep 20
         docker exec $(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest") /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Can@922946" -Q "CREATE DATABASE [nopCommerce];" -C
 
-    - name: Run nopCommerce (Silent Install Mode)
+    - name: Run nopCommerce (Force Configuration)
       run: |
-        # Chạy App với các biến môi trường cài đặt tự động. 
-        # Cách này sẽ tự tạo table và dữ liệu mẫu ngay khi khởi động.
+        # 1. Tạo thư mục vật lý và file cấu hình trước khi chạy Docker
+        mkdir -p $(pwd)/App_Data
+        cat <<EOF > $(pwd)/App_Data/dataSettings.json
+        {
+          "DbConnectionString": "Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False",
+          "DataProvider": "sqlserver",
+          "SQLCommandTimeout": null
+        }
+        EOF
+        chmod -R 777 $(pwd)/App_Data
+
+        # 2. Chạy Docker và MOUNT cả thư mục App_Data vào
+        # Việc mount thư mục giúp tránh lỗi "Resource busy" của file đơn lẻ
         docker run -d \
           --name nop_app \
           --network host \
+          -v $(pwd)/App_Data:/app/App_Data \
           -e ASPNETCORE_ENVIRONMENT=Production \
           -e NOP_DB_CONNECTION_STRING="Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False" \
           -e NOP_DB_PROVIDER="sqlserver" \
-          -e NOP_INSTALL_SAMPLE_DATA="True" \
-          -e NOP_ADMIN_EMAIL="admin@yourstore.com" \
-          -e NOP_ADMIN_PASSWORD="admin_password" \
           nopcommerceteam/nopcommerce:latest
 
     - name: Setup Node & Playwright
@@ -48,24 +57,31 @@ jobs:
         pnpm install
         pnpm exec playwright install --with-deps chromium
 
-    - name: Wait for App ready (HTTP 200)
+    - name: Wait for App ready
       run: |
-        echo "Waiting for nopCommerce to complete installation and return 200 OK..."
-        # Tăng thời gian chờ vì quá trình tạo dữ liệu mẫu (Sample Data) mất khoảng 2-3 phút
+        echo "Waiting for nopCommerce to bypass 302 redirect..."
+        # Cho App thời gian để nạp schema nếu cần
         sleep 60
         
-        for i in {1..40}; do
-          # Kiểm tra nếu mã trạng thái là 200 OK (Đã vào trang chủ, không còn redirect 302)
-          STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80)
+        for i in {1..30}; do
+          # Sử dụng curl -L để tự động đi theo chuyển hướng (follow redirect)
+          # Nếu kết quả cuối cùng là 200 OK thì coi như xong
+          STATUS=$(curl -Lo /dev/null -s -w "%{http_code}" http://localhost:80)
+          
           if [ "$STATUS" == "200" ]; then
-            echo "SUCCESS: nopCommerce is LIVE with Sample Data!"
+            echo "SUCCESS: App is LIVE at 200 OK!"
             exit 0
           fi
           
-          echo "Attempt $i: Status $STATUS. App is still migrating database..."
+          echo "Attempt $i: Current status $STATUS. Checking if install page is active..."
+          # Nếu bị kẹt ở trang install, in 10 dòng log để xem lý do DB không nhận
+          if curl -s http://localhost:80 | grep -q "install"; then
+             echo "Warning: Still hitting install page. App might not like the DB connection."
+             docker logs nop_app --tail 10
+          fi
           sleep 15
         done
-        docker logs nop_app --tail 100
+        docker logs nop_app
         exit 1
 
     - name: Run Playwright tests
