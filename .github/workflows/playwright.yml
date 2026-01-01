@@ -36,6 +36,14 @@ jobs:
 
     - name: Start nopCommerce Container
       run: |
+
+        echo "Getting SQL Server container IP..."
+        SQL_CONTAINER=$(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest")
+        SQL_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $SQL_CONTAINER)
+        
+        echo "SQL Server IP: $SQL_IP"
+        echo "SQL_SERVER_IP=$SQL_IP" >> $GITHUB_ENV
+
         echo "Waiting for SQL Server to be fully ready..."
         sleep 30
         
@@ -76,7 +84,14 @@ jobs:
 
     - name: Automate Installation with Playwright
       run: |
-        cat > install.mjs << 'EOF'
+
+        # Lấy SQL Server IP
+        SQL_CONTAINER=$(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest")
+        SQL_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $SQL_CONTAINER)
+        
+        echo "Using SQL Server IP: $SQL_IP"
+
+        cat > install.mjs << EOF
         import { chromium } from '@playwright/test';
 
         (async () => {
@@ -94,7 +109,7 @@ jobs:
             await page.waitForTimeout(2000);
             
             console.log('Filling connection details...');
-            await page.fill('input#ServerName', 'localhost');
+            await page.fill('input#ServerName', '$SQL_IP');
             await page.fill('input#DatabaseName', 'nopCommerce');
             
             const integratedAuth = page.locator('input#IntegratedSecurity');
@@ -200,10 +215,10 @@ jobs:
         BASE_URL: http://localhost:5000
 
 # THÊM ĐOẠN NÀY VÀO CUỐI FILE
-    - name: Upload Playwright report
+    - name: Upload Allure report
       if: always() # Luôn chạy kể cả khi test fail
       uses: actions/upload-artifact@v4
       with:
-        name: playwright-report
-        path: test-results/ # Hoặc playwright-report/ tùy cấu hình của bạn
+        name: allure-report # Hoặc playwright-report tùy cấu hình của bạn
+        path: allure-results/ # Hoặc playwright-report/ tùy cấu hình của bạn
         retention-days: 7
