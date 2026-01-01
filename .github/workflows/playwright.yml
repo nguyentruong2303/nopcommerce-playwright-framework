@@ -91,7 +91,7 @@ jobs:
         
         echo "Using SQL Server IP: $SQL_IP"
 
-        cat > install.mjs << EOF
+        cat > install.mjs << 'EOF'
         import { chromium } from '@playwright/test';
 
         (async () => {
@@ -109,7 +109,7 @@ jobs:
             await page.waitForTimeout(2000);
             
             console.log('Filling connection details...');
-            await page.fill('input#ServerName', '$SQL_IP');
+            await page.fill('input#ServerName', process.env.SQL_IP);
             await page.fill('input#DatabaseName', 'nopCommerce');
             
             const integratedAuth = page.locator('input#IntegratedSecurity');
@@ -168,7 +168,7 @@ jobs:
         })();
         EOF
         
-        node install.mjs
+        SQL_IP=$SQL_IP node install.mjs
 
     - name: Wait for Installation to Complete
       run: |
@@ -214,11 +214,10 @@ jobs:
       env:
         BASE_URL: http://localhost:5000
 
-# THÊM ĐOẠN NÀY VÀO CUỐI FILE
     - name: Upload Allure report
-      if: always() # Luôn chạy kể cả khi test fail
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: allure-report # Hoặc playwright-report tùy cấu hình của bạn
-        path: allure-results/ # Hoặc playwright-report/ tùy cấu hình của bạn
+        name: allure-report
+        path: allure-results/
         retention-days: 7
