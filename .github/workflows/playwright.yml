@@ -27,30 +27,32 @@ jobs:
         sleep 20
         docker exec $(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest") /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Can@922946" -Q "CREATE DATABASE [nopCommerce];" -C
 
-    - name: Run nopCommerce (Manual Config Injection)
+    - name: Run nopCommerce with Injected Config
       run: |
-        # 1. Chạy container trước
-        docker run -d --name nop_app --network host nopcommerceteam/nopcommerce:latest
+        # 1. Tạo thư mục chứa config trên runner
+        mkdir -p $(pwd)/nop_data
         
-        # 2. Tạo file cấu hình dataSettings.json chuẩn
-        mkdir -p temp_data
-        cat <<EOF > temp_data/dataSettings.json
+        # 2. Tạo file dataSettings.json chuẩn
+        # Lưu ý: Dùng 'host.docker.internal' hoặc '127.0.0.1' tùy theo network mode
+        cat <<EOF > $(pwd)/nop_data/dataSettings.json
         {
-          "DbConnectionString": "Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False",
+          "DbConnectionString": "Server=127.0.0.1,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False",
           "DataProvider": "sqlserver",
           "SQLCommandTimeout": null
         }
         EOF
+        
+        # 3. Cấp quyền đọc/ghi tuyệt đối cho thư mục này
+        chmod -R 777 $(pwd)/nop_data
 
-        # 3. Đợi App khởi động 1 chút rồi chép file vào App_Data
-        sleep 10
-        docker cp temp_data/dataSettings.json nop_app:/app/App_Data/dataSettings.json
-        
-        # 4. Quan trọng: Cấp quyền ghi cho thư mục để App tự chạy Migration
-        docker exec -u root nop_app chmod -R 777 /app/App_Data
-        
-        # 5. Khởi động lại để App nhận cấu hình mới
-        docker restart nop_app
+        # 4. Chạy Docker và MOUNT file vào đúng vị trí App_Data
+        # Sử dụng --network host để App nhìn thấy SQL Server ở localhost
+        docker run -d \
+          --name nop_app \
+          --network host \
+          -v $(pwd)/nop_data/dataSettings.json:/app/App_Data/dataSettings.json \
+          -e ASPNETCORE_ENVIRONMENT=Production \
+          nopcommerceteam/nopcommerce:latest
 
     - name: Setup Node & Playwright
       run: |
@@ -60,11 +62,31 @@ jobs:
 
     - name: Wait for App ready
       run: |
-        echo "Waiting for nopCommerce to migrate database and show Homepage..."
-        # Quá trình tạo bảng lần đầu mất khoảng 1-2 phút
+        echo "Waiting for nopCommerce to bypass Install page..."
+        # Đợi 60s để App thực hiện Migration (tạo bảng) ngầm
         sleep 60
-        timeout 300 bash -c 'until curl -sL http://localhost:80 | grep -q "ico-register"; do echo "Still on Install page or loading... waiting 10s"; sleep 10; done'
-        echo "SUCCESS: Homepage is LIVE!"
+        
+        for i in {1..30}; do
+          # Kiểm tra xem trang web đã thoát khỏi màn hình Install chưa bằng cách tìm nút Đăng ký
+          RESPONSE=$(curl -sL http://localhost:80)
+          
+          if echo "$RESPONSE" | grep -q "ico-register"; then
+            echo "SUCCESS: Homepage is LIVE and bypass Install page!"
+            exit 0
+          fi
+          
+          if echo "$RESPONSE" | grep -q "installation"; then
+            echo "Attempt $i: Still stuck on Install page. Checking logs..."
+            docker logs nop_app --tail 10
+          else
+            echo "Attempt $i: Page is loading or migrating..."
+          fi
+          sleep 15
+        done
+        
+        echo "FAILED: Final UI check failed. Container Logs:"
+        docker logs nop_app
+        exit 1
 
     - name: Run Playwright tests
       run: pnpm exec playwright test
