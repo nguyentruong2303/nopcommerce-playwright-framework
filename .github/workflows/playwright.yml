@@ -58,24 +58,8 @@ jobs:
             
             console.log('Filling database information...');
             
-            // Debug: Get all available options
-            const options = await page.$$eval('select#DataProvider option', opts => 
-              opts.map(opt => ({ value: opt.value, text: opt.textContent }))
-            );
-            console.log('Available database options:', JSON.stringify(options, null, 2));
-            
-            // Select SQL Server by value (try common variations)
-            const sqlServerOption = options.find(opt => 
-              opt.value.toLowerCase().includes('sql') || 
-              opt.text.toLowerCase().includes('sql server')
-            );
-            
-            if (sqlServerOption) {
-              console.log(`Selecting option: ${sqlServerOption.value}`);
-              await page.selectOption('select#DataProvider', sqlServerOption.value);
-            } else {
-              throw new Error('SQL Server option not found in dropdown');
-            }
+            // Select SQL Server (value = "1")
+            await page.selectOption('select#DataProvider', '1');
             
             // Wait for connection string fields to appear
             await page.waitForTimeout(2000);
@@ -112,18 +96,55 @@ jobs:
             }
             
             console.log('Submitting installation form...');
-            await page.click('button[type="submit"]');
+            const submitButton = page.locator('button[type="submit"]');
+            await submitButton.click();
+            
+            // Wait a bit for any validation errors
+            await page.waitForTimeout(3000);
+            
+            // Check if still on install page (validation error)
+            if (page.url().includes('/install')) {
+              console.log('Still on install page, checking for errors...');
+              const errorMessages = await page.$$eval('.field-validation-error, .validation-summary-errors li', 
+                errors => errors.map(e => e.textContent.trim())
+              );
+              if (errorMessages.length > 0) {
+                console.error('Validation errors:', errorMessages);
+              }
+              
+              // Try to see if install is processing
+              const progressIndicator = page.locator('#installation-progress, .installation-progress, [class*="progress"]');
+              if (await progressIndicator.count() > 0) {
+                console.log('Installation in progress, waiting...');
+              }
+            }
             
             console.log('Waiting for installation to complete (this may take 3-5 minutes)...');
-            // Wait for redirect to home page (installation complete)
-            await page.waitForURL('http://localhost:80/', { timeout: 360000 });
             
-            console.log('✅ Installation completed successfully!');
+            // Try different wait strategies
+            try {
+              // Wait for navigation away from /install
+              await page.waitForURL(url => !url.includes('/install'), { timeout: 360000 });
+              console.log('✅ Redirected away from install page!');
+            } catch (e) {
+              console.log('No redirect detected, checking page content...');
+              // Maybe installation completed but no redirect - check for home page elements
+              const registerLink = page.locator('a.ico-register');
+              if (await registerLink.count() > 0) {
+                console.log('✅ Found register link - installation likely complete');
+              } else {
+                throw new Error('Installation did not complete - still on install page');
+              }
+            }
+            
+            console.log('Final URL:', page.url());
             await browser.close();
             process.exit(0);
           } catch (error) {
             console.error('❌ Installation failed:', error.message);
             await page.screenshot({ path: 'installation-error.png', fullPage: true });
+            const pageContent = await page.content();
+            console.log('Page HTML length:', pageContent.length);
             console.log('Page URL:', page.url());
             await browser.close();
             process.exit(1);
