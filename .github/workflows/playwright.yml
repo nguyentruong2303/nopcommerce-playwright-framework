@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    timeout-minutes: 20
+    timeout-minutes: 30
     runs-on: ubuntu-latest
 
     services:
@@ -22,37 +22,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Create nopCommerce Configuration
-      run: |
-        mkdir -p $(pwd)/temp_configs
-        # Sử dụng cấu trúc dataSettings.json chuẩn cho các bản 4.x mới nhất
-        cat <<EOF > $(pwd)/temp_configs/dataSettings.json
-        {
-          "DbConnectionString": "Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False",
-          "DataProvider": "sqlserver",
-          "SQLCommandTimeout": null
-        }
-        EOF
-
     - name: Pre-create Database
       run: |
         sleep 20
         docker exec $(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest") /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Can@922946" -Q "CREATE DATABASE [nopCommerce];" -C
 
-    - name: Run nopCommerce
+    - name: Run nopCommerce (Silent Install Mode)
       run: |
+        # Chạy App với các biến môi trường cài đặt tự động. 
+        # Cách này sẽ tự tạo table và dữ liệu mẫu ngay khi khởi động.
         docker run -d \
           --name nop_app \
           --network host \
           -e ASPNETCORE_ENVIRONMENT=Production \
+          -e NOP_DB_CONNECTION_STRING="Server=localhost,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False" \
+          -e NOP_DB_PROVIDER="sqlserver" \
+          -e NOP_INSTALL_SAMPLE_DATA="True" \
+          -e NOP_ADMIN_EMAIL="admin@yourstore.com" \
+          -e NOP_ADMIN_PASSWORD="admin_password" \
           nopcommerceteam/nopcommerce:latest
-        
-        sleep 10
-        # Chép file vào và đảm bảo quyền hạn
-        docker cp $(pwd)/temp_configs/dataSettings.json nop_app:/app/App_Data/dataSettings.json
-        docker exec -u root nop_app chmod 666 /app/App_Data/dataSettings.json
-        
-        docker restart nop_app
 
     - name: Setup Node & Playwright
       run: |
@@ -60,21 +48,24 @@ jobs:
         pnpm install
         pnpm exec playwright install --with-deps chromium
 
-    - name: Wait for App ready
+    - name: Wait for App ready (HTTP 200)
       run: |
-        echo "Waiting for nopCommerce to recognize the database..."
-        for i in {1..30}; do
-          # Kiểm tra xem có phản hồi HTTP 200 không
+        echo "Waiting for nopCommerce to complete installation and return 200 OK..."
+        # Tăng thời gian chờ vì quá trình tạo dữ liệu mẫu (Sample Data) mất khoảng 2-3 phút
+        sleep 60
+        
+        for i in {1..40}; do
+          # Kiểm tra nếu mã trạng thái là 200 OK (Đã vào trang chủ, không còn redirect 302)
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80)
           if [ "$STATUS" == "200" ]; then
-            echo "SUCCESS: nopCommerce is LIVE!"
+            echo "SUCCESS: nopCommerce is LIVE with Sample Data!"
             exit 0
           fi
-          echo "Attempt $i: Status code $STATUS. Still starting..."
-          docker logs nop_app --tail 2
-          sleep 10
+          
+          echo "Attempt $i: Status $STATUS. App is still migrating database..."
+          sleep 15
         done
-        docker logs nop_app
+        docker logs nop_app --tail 100
         exit 1
 
     - name: Run Playwright tests
