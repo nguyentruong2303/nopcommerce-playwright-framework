@@ -22,25 +22,37 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Pre-create Database
+    - name: Install nopCommerce via Installation Wizard (API)
       run: |
         sleep 20
-        docker exec $(docker ps -qf "ancestor=mcr.microsoft.com/mssql/server:2022-latest") /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Can@922946" -Q "CREATE DATABASE [nopCommerce];" -C
-
-    - name: Run nopCommerce (Full Auto-Install)
-      run: |
-        # Chạy App với đầy đủ các biến môi trường để nó tự thực hiện cài đặt ngầm (Silent Install)
-        # Chúng ta bỏ qua bước tạo file JSON thủ công để tránh lỗi quyền hạn (Permission)
+        
+        # Chạy container tạm để vào trang Install
         docker run -d \
           --name nop_app \
           --network host \
-          -e ASPNETCORE_ENVIRONMENT=Production \
-          -e NOP_DB_CONNECTION_STRING="Server=127.0.0.1,1433;Database=nopCommerce;User ID=sa;Password=Can@922946;TrustServerCertificate=True;Encrypt=False" \
-          -e NOP_DB_PROVIDER="sqlserver" \
-          -e NOP_INSTALL_SAMPLE_DATA="True" \
-          -e NOP_ADMIN_EMAIL="admin@yourstore.com" \
-          -e NOP_ADMIN_PASSWORD="admin_password" \
           nopcommerceteam/nopcommerce:latest
+        
+        echo "Waiting for app to start..."
+        sleep 30
+        
+        # Gọi API Install tự động
+        curl -X POST http://localhost:80/install \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "DbProvider=sqlserver" \
+          -d "DataProvider=sqlserver" \
+          -d "ServerName=localhost" \
+          -d "DatabaseName=nopCommerce" \
+          -d "IntegratedSecurity=false" \
+          -d "Username=sa" \
+          -d "Password=Can@922946" \
+          -d "TrustServerCertificate=true" \
+          -d "CreateSampleData=true" \
+          -d "AdminEmail=admin@yourstore.com" \
+          -d "AdminPassword=admin123" \
+          -d "ConfirmPassword=admin123" \
+          -d "InstallSampleData=true"
+        
+        echo "Installation triggered. Waiting for completion..."
 
     - name: Setup Node & Playwright
       run: |
@@ -48,34 +60,28 @@ jobs:
         pnpm install
         pnpm exec playwright install --with-deps chromium
 
-    - name: Wait for App ready
+    - name: Wait for Installation Complete
       run: |
-        echo "Waiting for nopCommerce to auto-install (this can take 2-3 minutes)..."
-        # Tăng thời gian chờ ban đầu vì quá trình tạo Schema và Sample Data rất nặng
-        sleep 100
+        echo "Waiting for nopCommerce installation (2-4 minutes)..."
         
-        for i in {1..30}; do
-          # Kiểm tra status code. Nếu là 200 OK nghĩa là đã vượt qua trang Install (302)
+        for i in {1..40}; do
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80)
           
+          # Status 200 = installation complete
           if [ "$STATUS" == "200" ]; then
-            # Kiểm tra thêm nội dung để chắc chắn không phải trang lỗi
             if curl -s http://localhost:80 | grep -q "ico-register"; then
-              echo "SUCCESS: nopCommerce is LIVE and ready for Playwright!"
+              echo "✅ SUCCESS: nopCommerce is ready!"
               exit 0
             fi
           fi
           
-          echo "Attempt $i: Status $STATUS. App is still installing database..."
-          # Nếu status là 000, nghĩa là container đã sập, in log ngay
-          if [ "$STATUS" == "000" ]; then
-            docker logs nop_app --tail 20
-          fi
+          # Status 302 = still on install wizard (normal during installation)
+          echo "[$i/40] Status: $STATUS (waiting...)"
           sleep 15
         done
         
-        echo "FAILED: Final Logs before exit:"
-        docker logs nop_app
+        echo "❌ Installation timeout. Logs:"
+        docker logs nop_app --tail 50
         exit 1
 
     - name: Run Playwright tests
