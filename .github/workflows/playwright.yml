@@ -136,34 +136,40 @@ jobs:
     - name: Wait for Installation to Complete
       run: |
         echo "⏳ Waiting for nopCommerce installation (can take 3-5 minutes for schema + sample data)..."
-        echo "The app may be unresponsive during this time - this is normal."
+        echo "The app will restart automatically after installation completes."
         
         # Give it time to start the heavy database work
         sleep 30
         
-        for i in {1..50}; do
+        RESTART_DETECTED=false
+        
+        for i in {1..60}; do
           STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80 2>/dev/null || echo "000")
           
+          # Status 200 with home page = SUCCESS
           if [ "$STATUS" == "200" ]; then
-            if curl -s http://localhost:80 | grep -q "ico-register"; then
+            if curl -s http://localhost:80 2>/dev/null | grep -q "ico-register"; then
               echo "✅ Installation complete! nopCommerce is ready."
               exit 0
             fi
           fi
           
-          echo "[$i/50] Status: $STATUS (installation in progress...)"
-          
-          # If status is 000, container might have crashed
+          # Status 000 means app is down (likely restarting after install)
           if [ "$STATUS" == "000" ]; then
-            echo "⚠️  Warning: App not responding, checking logs..."
-            docker logs nop_app --tail 10
+            if [ "$RESTART_DETECTED" == "false" ]; then
+              echo "🔄 App restart detected (normal after installation)..."
+              RESTART_DETECTED=true
+            fi
+            echo "[$i/60] Waiting for app to come back online..."
+          else
+            echo "[$i/60] Status: $STATUS (waiting for installation...)"
           fi
           
-          sleep 15
+          sleep 10
         done
         
-        echo "❌ Installation timeout after 12+ minutes"
-        docker logs nop_app --tail 100
+        echo "❌ Installation timeout after 10+ minutes"
+        docker logs nop_app --tail 50
         exit 1
 
     - name: Run Playwright tests
