@@ -36,7 +36,8 @@ jobs:
 
     - name: Start nopCommerce Container
       run: |
-        sleep 20
+        echo "Waiting for SQL Server to be fully ready..."
+        sleep 30
         
         docker run -d \
           --name nop_app \
@@ -46,6 +47,26 @@ jobs:
         
         echo "Waiting for nopCommerce to start..."
         sleep 30
+
+        echo "Checking container status..."
+        docker ps -a
+        docker logs nop_app
+
+    - name: Wait for nopCommerce to be Ready
+      run: |
+        echo "Waiting for nopCommerce to be accessible..."
+        for i in {1..30}; do
+          if curl -f http://localhost:5000 2>/dev/null; then
+            echo "✅ nopCommerce is ready!"
+            exit 0
+          fi
+          echo "[$i/30] Waiting for nopCommerce to start..."
+          sleep 5
+        done
+        
+        echo "❌ nopCommerce failed to start"
+        docker logs nop_app
+        exit 1
 
     - name: Setup Node & Playwright
       run: |
@@ -64,7 +85,7 @@ jobs:
           
           try {
             console.log('Opening installation page...');
-            await page.goto('http://localhost:5000/install', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await page.goto('http://localhost:5000/install', { waitUntil: 'domcontentloaded', timeout: 90000 });
             
             await page.waitForSelector('select#DataProvider', { state: 'visible', timeout: 10000 });
             
