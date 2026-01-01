@@ -65,22 +65,16 @@ jobs:
             console.log('Opening installation page...');
             await page.goto('http://localhost:80/install', { waitUntil: 'domcontentloaded', timeout: 60000 });
             
-            // Wait for form to be ready
             await page.waitForSelector('select#DataProvider', { state: 'visible', timeout: 10000 });
             
             console.log('Filling database information...');
-            
-            // Select SQL Server (value = "1")
             await page.selectOption('select#DataProvider', '1');
-            
-            // Wait for connection string fields to appear
             await page.waitForTimeout(2000);
             
             console.log('Filling connection details...');
             await page.fill('input#ServerName', 'localhost');
             await page.fill('input#DatabaseName', 'nopCommerce');
             
-            // Uncheck Windows Authentication
             const integratedAuth = page.locator('input#IntegratedSecurity');
             if (await integratedAuth.isChecked()) {
               await integratedAuth.uncheck();
@@ -90,7 +84,6 @@ jobs:
             await page.fill('input#Username', 'sa');
             await page.fill('input#Password', 'Can@922946');
             
-            // Check Trust Server Certificate if it exists
             const trustCert = page.locator('input#TrustServerCertificate');
             if (await trustCert.count() > 0) {
               await trustCert.check();
@@ -111,53 +104,27 @@ jobs:
             const submitButton = page.locator('button[type="submit"].btn-install');
             await submitButton.click();
             
-            // Wait a bit for any validation errors
-            await page.waitForTimeout(3000);
+            // Wait a moment to ensure form submission started
+            await page.waitForTimeout(5000);
             
-            // Check if still on install page (validation error)
+            // Check for immediate validation errors
             if (page.url().includes('/install')) {
-              console.log('Still on install page, checking for errors...');
               const errorMessages = await page.$$eval('.field-validation-error, .validation-summary-errors li', 
-                errors => errors.map(e => e.textContent.trim())
+                errors => errors.map(e => e.textContent.trim()).filter(t => t.length > 0)
               );
               if (errorMessages.length > 0) {
-                console.error('Validation errors:', errorMessages);
-              }
-              
-              // Try to see if install is processing
-              const progressIndicator = page.locator('#installation-progress, .installation-progress, [class*="progress"]');
-              if (await progressIndicator.count() > 0) {
-                console.log('Installation in progress, waiting...');
+                console.error('❌ Validation errors found:', errorMessages);
+                await browser.close();
+                process.exit(1);
               }
             }
             
-            console.log('Waiting for installation to complete (this may take 3-5 minutes)...');
-            
-            // Try different wait strategies
-            try {
-              // Wait for navigation away from /install
-              await page.waitForURL(url => !url.includes('/install'), { timeout: 360000 });
-              console.log('✅ Redirected away from install page!');
-            } catch (e) {
-              console.log('No redirect detected, checking page content...');
-              // Maybe installation completed but no redirect - check for home page elements
-              const registerLink = page.locator('a.ico-register');
-              if (await registerLink.count() > 0) {
-                console.log('✅ Found register link - installation likely complete');
-              } else {
-                throw new Error('Installation did not complete - still on install page');
-              }
-            }
-            
-            console.log('Final URL:', page.url());
+            console.log('✅ Form submitted successfully! Installation is processing...');
             await browser.close();
             process.exit(0);
           } catch (error) {
-            console.error('❌ Installation failed:', error.message);
+            console.error('❌ Form submission failed:', error.message);
             await page.screenshot({ path: 'installation-error.png', fullPage: true });
-            const pageContent = await page.content();
-            console.log('Page HTML length:', pageContent.length);
-            console.log('Page URL:', page.url());
             await browser.close();
             process.exit(1);
           }
@@ -166,16 +133,38 @@ jobs:
         
         node install.mjs
 
-    - name: Verify Installation Success
+    - name: Wait for Installation to Complete
       run: |
-        STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80)
-        if [ "$STATUS" == "200" ]; then
-          echo "✅ nopCommerce is ready for testing!"
-        else
-          echo "❌ Unexpected status: $STATUS"
-          docker logs nop_app --tail 30
-          exit 1
-        fi
+        echo "⏳ Waiting for nopCommerce installation (can take 3-5 minutes for schema + sample data)..."
+        echo "The app may be unresponsive during this time - this is normal."
+        
+        # Give it time to start the heavy database work
+        sleep 30
+        
+        for i in {1..50}; do
+          STATUS=$(curl -o /dev/null -s -w "%{http_code}" http://localhost:80 2>/dev/null || echo "000")
+          
+          if [ "$STATUS" == "200" ]; then
+            if curl -s http://localhost:80 | grep -q "ico-register"; then
+              echo "✅ Installation complete! nopCommerce is ready."
+              exit 0
+            fi
+          fi
+          
+          echo "[$i/50] Status: $STATUS (installation in progress...)"
+          
+          # If status is 000, container might have crashed
+          if [ "$STATUS" == "000" ]; then
+            echo "⚠️  Warning: App not responding, checking logs..."
+            docker logs nop_app --tail 10
+          fi
+          
+          sleep 15
+        done
+        
+        echo "❌ Installation timeout after 12+ minutes"
+        docker logs nop_app --tail 100
+        exit 1
 
     - name: Run Playwright tests
       run: pnpm exec playwright test
