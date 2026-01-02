@@ -16,6 +16,13 @@ test.describe('User Registration Tests', () => {
         confirmPassword: testData.defaultPassword
     };
 
+    test.beforeAll(async ({ registerPage, menuHeader }) => {
+        await registerPage.fillForm(registrationData);
+        await registerPage.clickOnRegisterButton();
+        // Logout after registration to test login scenarios
+        await menuHeader.clickLogout();
+    });
+
 
 
     test('TC_001: Unsuccessful registration with empty data shows error messages', async ({ registerPage }) => {
@@ -79,7 +86,7 @@ test.describe('User Registration Tests', () => {
             await registerPage.fillForm({
                 firstName: registrationData.firstName,
                 lastName: registrationData.lastName,
-                email: 'truongautomation@gmail.com', // Existing email
+                email: registrationData.email, // Existing email
                 company: testData.companyName,
                 password: testData.defaultPassword,
                 confirmPassword: testData.defaultPassword
@@ -97,7 +104,7 @@ test.describe('User Registration Tests', () => {
         });
     });
 
-    test('TC_004: Unsuccessful registration with password léss than 6 characters shows error message', async ({ registerPage }) => {
+    test('TC_004: Unsuccessful registration with password less than 6 characters shows error message', async ({ registerPage }) => {
         test.info().annotations.push({
             type: 'description',
             description: 'Unsuccessful registration with password less than 6 characters shows error message'
