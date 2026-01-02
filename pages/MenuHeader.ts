@@ -27,6 +27,16 @@ export class MenuHeader {
         return this.page.locator(".ico-cart");
     }
 
+    get myAccountLink() {
+        return this.page.locator(".ico-account");
+    }
+
+    get logoutLink() {
+        return this.page.locator(".ico-logout");
+    }
+
+
+
     /**
      * Navigates to the registration page by clicking the register link.
      * Waits for the link to be visible before clicking.
@@ -56,6 +66,11 @@ export class MenuHeader {
         await this.wishlistLink.click();
     }
 
+    async clickLogout(): Promise<void> {
+        await this.logoutLink.waitFor({ state: "visible" });
+        await this.logoutLink.click();
+    }
+
     /**
      * Navigates to the shopping cart page by clicking the shopping cart link.
      * Waits for the link to be visible before clicking.
@@ -63,5 +78,9 @@ export class MenuHeader {
     async openShoppingCartPage(): Promise<void> {
         await this.shoppingCartLink.waitFor({ state: "visible" });
         await this.shoppingCartLink.click();
+    }
+
+    async isMyAccountLinkVisible(): Promise<boolean> {
+        return this.myAccountLink.isVisible();
     }
 }

@@ -1,8 +1,8 @@
 import { Page } from "@playwright/test";
 
 
-export class LoginPage {    
-    
+export class LoginPage {
+
     private readonly page: Page;
 
     constructor(page: Page) {
@@ -25,7 +25,7 @@ export class LoginPage {
     }
 
     get unsuccessfulLoginMessage() {
-        return this.page.locator("//div[contains(@class, 'message-error') and contains(., 'Login was unsuccessful.')]");
+        return this.page.locator(".message-error");
     }
 
     async login(email: string, password: string) {
@@ -42,5 +42,8 @@ export class LoginPage {
         return this.unsuccessfulLoginMessage.textContent();
     }
 
+    async clickOnLoginButton() {
+        await this.loginButton.click();
+    }
+
 }
-    

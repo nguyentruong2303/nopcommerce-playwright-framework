@@ -18,7 +18,7 @@ export const test = base.extend<Fixtures>({
     },
     menuHeader: async ({ page }, use) => {
         await use(new MenuHeader(page));
-    },  
+    },
 
     registerPage: async ({ homePage, menuHeader, page }, use) => {
         const registerPage = new RegisterPage(page);
@@ -26,9 +26,10 @@ export const test = base.extend<Fixtures>({
         await menuHeader.openRegisterPage();
         await use(registerPage);
     },
-    loginPage: async ({ page }, use) => {
-        await use(new LoginPage(page));
+    loginPage: async ({ page, menuHeader }, use) => {
+        const loginPage = new LoginPage(page);
+        await page.goto(BASE_URL);
+        await menuHeader.openLoginPage();
+        await use(loginPage);
     },
-
-
 });
