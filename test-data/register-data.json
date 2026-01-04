@@ -1,4 +1,7 @@
 {
+  "firstName": "Simon",
+  "lastName": "Brown",
+  "email": "simon.brown@example.com",
   "defaultPassword": "Password123!",
   "companyName": "Automation Test Corp"
 }

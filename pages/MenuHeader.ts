@@ -83,4 +83,10 @@ export class MenuHeader {
     async isMyAccountLinkVisible(): Promise<boolean> {
         return this.myAccountLink.isVisible();
     }
+
+    async openMyAccountPage(): Promise<void> {
+        await this.myAccountLink.waitFor({ state: "visible" });
+        await this.myAccountLink.click();
+    }
+
 }

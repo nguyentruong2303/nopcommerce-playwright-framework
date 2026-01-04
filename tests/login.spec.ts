@@ -53,6 +53,11 @@ test.describe('User Login Tests with invalid data', () => {
             expect(unsuccessfulLoginMessage).toContain('Login was unsuccessful. Please correct the errors and try again.');
         });
     });
+
+    test.afterAll(async ({ closeBrowserAfterTest }) => {
+        // Close the browser after all tests in this describe block
+        closeBrowserAfterTest;
+    });
 });
 
 test.describe('Login tests with registered user', () => {
@@ -75,7 +80,7 @@ test.describe('Login tests with registered user', () => {
             password: testData.defaultPassword,
             confirmPassword: testData.defaultPassword
         };
-        
+
         await registerPage.fillForm(registerData);
         await registerPage.clickOnRegisterButton();
         // Logout after registration to test login scenarios
@@ -127,6 +132,11 @@ test.describe('Login tests with registered user', () => {
         await test.step('Verify that the user is logged in by checking the presence of the logout option', async () => {
             expect(await menuHeader.isMyAccountLinkVisible()).toBeTruthy();
         });
+    });
+
+    test.afterAll(async ({ closeBrowserAfterTest }) => {
+        // Close the browser after all tests in this describe block
+        closeBrowserAfterTest;
     });
 });
 
