@@ -53,9 +53,4 @@ test.describe("My Account - Customer Info", () => {
             test.expect(gender).toBe(customerInfo.gender);
         });
     });
-
-    test.afterAll(async ({ closeBrowserAfterTest }) => {
-        // Close the browser after all tests in this describe block
-        closeBrowserAfterTest;
-    });
 });

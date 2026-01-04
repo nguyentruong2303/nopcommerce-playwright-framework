@@ -139,12 +139,6 @@ test.describe('User Registration Tests - with invalid data', () => {
             expect(registrationResult).toContain('Your registration completed');
         });
     });
-
-    test.afterAll(async ({ closeBrowserAfterTest }) => {
-        // Close the browser after all tests in this describe block
-        closeBrowserAfterTest;
-    });
-
 });
 test.describe('User Registration Tests - with email existing in the system', () => {
 

@@ -8,7 +8,7 @@ test.describe("My Account - Address", () => {
     const addressData = {
         firstName: faker.person.firstName(),
         lastName: faker.person.lastName(),
-        email: faker.internet.email(),                                              
+        email: faker.internet.email(),
         companyName: "Test Company",
         country: "United States of America",
         state: "California",
@@ -24,7 +24,7 @@ test.describe("My Account - Address", () => {
         test.info().annotations.push({
             type: "description",
             description: "Verify the error messages when mandatory fields are empty in Add New Address form"
-        }); 
+        });
         await test.step("Open Add New Address form", async () => {
             await addressPage.clickOnAddNewButton();
         });
@@ -91,19 +91,19 @@ test.describe("My Account - Address", () => {
         test.info().annotations.push({
             type: 'description',
             description: 'Verify the error message when invalid email format is entered in Add New Address form'
-        }); 
+        });
 
         await test.step('Open Add New Address form', async () => {
             await addressPage.clickOnAddNewButton();
         });
 
-        await test.step('Submit the Add New Address form with invalid email format', async () => {  
+        await test.step('Submit the Add New Address form with invalid email format', async () => {
             await addressPage.fillAddressForm(
                 addressData.firstName,
-                addressData.lastName,       
+                addressData.lastName,
                 "invalid-email-format", // Invalid email format
                 addressData.companyName,
-                addressData.country,    
+                addressData.country,
                 addressData.state,
                 addressData.city,
                 addressData.address1,
@@ -112,7 +112,7 @@ test.describe("My Account - Address", () => {
                 addressData.phoneNumber,
                 addressData.faxNumber
             );
-            await addressPage.clickOnSaveButton();  
+            await addressPage.clickOnSaveButton();
         });
 
         const emailError = await addressPage.getEmailErrorMessage();
@@ -126,15 +126,15 @@ test.describe("My Account - Address", () => {
         test.info().annotations.push({
             type: 'description',
             description: 'Verify that a new address is added successfully with valid data in Add New Address form'
-        }); 
+        });
 
         await test.step('Open Add New Address form', async () => {
             await addressPage.clickOnAddNewButton();
         });
 
-        await test.step('Submit the Add New Address form with valid data', async () => {  
+        await test.step('Submit the Add New Address form with valid data', async () => {
             await addressPage.fillAddressForm(
-                addressData.firstName,  
+                addressData.firstName,
                 addressData.lastName,
                 addressData.email,
                 addressData.companyName,
@@ -147,7 +147,7 @@ test.describe("My Account - Address", () => {
                 addressData.phoneNumber,
                 addressData.faxNumber
             );
-            await addressPage.clickOnSaveButton();  
+            await addressPage.clickOnSaveButton();
         });
 
         const successMessage = await addressPage.successMessage.textContent();
@@ -171,12 +171,12 @@ test.describe("My Account - Address", () => {
 
             expect(firstName).toBe(addressData.firstName);
             expect(lastName).toBe(addressData.lastName);
-            expect(email).toBe(addressData.email);  
+            expect(email).toBe(addressData.email);
             expect(company).toBe(addressData.companyName);
             expect(country).toBe(addressData.country);
-            expect(state).toBe(addressData.state);  
+            expect(state).toBe(addressData.state);
             expect(city).toBe(addressData.city);
-            expect(address1).toBe(addressData.address1);        
+            expect(address1).toBe(addressData.address1);
             expect(address2).toBe(addressData.address2);
             expect(zipPostalCode).toBe(addressData.zipPostalCode);
             expect(phoneNumber).toBe(addressData.phoneNumber);
@@ -184,5 +184,5 @@ test.describe("My Account - Address", () => {
         });
     });
 
-    
+
 });
