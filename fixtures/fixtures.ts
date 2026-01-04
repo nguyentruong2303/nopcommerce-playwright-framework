@@ -76,9 +76,7 @@ export const test = base.extend<Fixtures>({
         await use(new MyProductReviewsPage(page));
     },
 
-    closeBrowserAfterTest: async ({ page, context }, use) => {
+    closeBrowserAfterTest: async ({}, use) => {
         await use();
-        await page.close();
-        await context.close();
     }
 });

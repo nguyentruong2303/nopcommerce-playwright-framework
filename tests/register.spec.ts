@@ -192,9 +192,6 @@ test.describe('User Registration Tests - with email existing in the system', () 
             expect(emailError).toBe('The specified email already exists');
         });
     });
-    test.afterAll(async ({ closeBrowserAfterTest }) => {
-        // Close the browser after all tests in this describe block
-        closeBrowserAfterTest;
-    });
+
 
 });  

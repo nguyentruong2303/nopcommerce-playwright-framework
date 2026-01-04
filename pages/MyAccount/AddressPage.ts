@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
 import { MyAccountSideBarPage } from "./MyAccountSideBarPage";
+import { th } from "@faker-js/faker";
 
 export class AddressPage extends MyAccountSideBarPage {
     constructor(page: Page) {
@@ -30,7 +31,7 @@ export class AddressPage extends MyAccountSideBarPage {
     }
 
     get stateDropdown() {
-        return this.page.locator("#Address_StateProvinceId");
+        return this.page.locator("//select[@id='Address_StateProvinceId']");
     }
 
     get cityTextbox() {
@@ -78,7 +79,7 @@ export class AddressPage extends MyAccountSideBarPage {
     }
 
     get stateProvinceErrorMessage() {
-        return this.page.locator("#Address_StateProvinceId-error");
+        return this.page.locator(".field-validation-error");
     }
 
     get address1ErrorMessage() {
@@ -133,7 +134,8 @@ export class AddressPage extends MyAccountSideBarPage {
         await this.countryDropdown.selectOption(country);
     }       
 
-    async selectState(state: string) {    
+    async selectState(state: string) {   
+        await this.page.waitForTimeout(500); 
         await this.stateDropdown.selectOption(state);
     }   
 
@@ -177,7 +179,7 @@ export class AddressPage extends MyAccountSideBarPage {
         return this.emailErrorMessage.textContent();
     }   
 
-    get getStateProvinceErrorMessage(): Promise<string | null> {
+    async getStateProvinceErrorMessage(): Promise<string | null> {
         return this.stateProvinceErrorMessage.textContent();
     }
 
@@ -229,11 +231,11 @@ export class AddressPage extends MyAccountSideBarPage {
     }   
 
     async getCountry(): Promise<string> {    
-        return this.countryDropdown.inputValue();
+        return await this.countryDropdown.locator('option:checked').textContent() || '';
     }   
 
     async getState(): Promise<string> {    
-        return this.stateDropdown.inputValue();
+        return await this.stateDropdown.locator('option:checked').textContent() || '';
     }   
 
     async getCity(): Promise<string> {    
