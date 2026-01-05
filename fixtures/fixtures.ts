@@ -9,7 +9,9 @@ import { CustomerPage } from "../pages/MyAccount/CustomerPage";
 import { AddressPage } from "../pages/MyAccount/AddressPage";
 import { ChangePasswordPage } from "../pages/MyAccount/ChangePasswordPage";
 import { MyProductReviewsPage } from "../pages/MyAccount/MyProductReviewsPage";
-import { fa, faker } from "@faker-js/faker";
+import { faker } from "@faker-js/faker";
+import * as testData from "../test-data/register-data.json";
+
 type Fixtures = {
     registerPage: RegisterPage;
     loginPage: LoginPage;
@@ -49,9 +51,9 @@ export const test = base.extend<Fixtures>({
             firstName: faker.person.firstName(),
             lastName: faker.person.lastName(),
             email: faker.internet.email(),
-            company: "Test Company",
-            password: "Test@1234",
-            confirmPassword: "Test@1234"
+            company: testData.companyName,
+            password: testData.defaultPassword,
+            confirmPassword: testData.defaultPassword
         });
         await registerPage.clickOnRegisterButton();
 

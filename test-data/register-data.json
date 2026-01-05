@@ -3,5 +3,6 @@
   "lastName": "Brown",
   "email": "simon.brown@example.com",
   "defaultPassword": "Password123!",
+  "newPassword": "NewPassword123!",
   "companyName": "Automation Test Corp"
 }

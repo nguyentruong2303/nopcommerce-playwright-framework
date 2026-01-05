@@ -20,7 +20,7 @@ export class ChangePasswordPage extends MyAccountSideBarPage {
     }
 
     get changePasswordButton() {
-        return this.page.locator("//button[@name='save-changes-button']");
+        return this.page.locator(".change-password-button");
     }
 
     get changePasswordSuccessMessage() {
@@ -37,6 +37,10 @@ export class ChangePasswordPage extends MyAccountSideBarPage {
 
     get confirmPasswordErrorMessage() {
         return this.page.locator("#ConfirmNewPassword-error");
+    }
+
+    get oldPasswordDoesNotMatchErrorMessage() {
+        return this.page.locator(".change-password-page li");
     }
 
     async enterOldPassword(oldPassword: string): Promise<void> {
@@ -70,4 +74,8 @@ export class ChangePasswordPage extends MyAccountSideBarPage {
     async getConfirmPasswordErrorMessage(): Promise<string | null> {
         return this.confirmPasswordErrorMessage.textContent();
     }   
+
+    async getOldPasswordDoesNotMatchErrorMessage(): Promise<string | null> {
+        return this.oldPasswordDoesNotMatchErrorMessage.textContent();
+    }
 }

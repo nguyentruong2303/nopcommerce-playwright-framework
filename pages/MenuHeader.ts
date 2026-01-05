@@ -35,6 +35,9 @@ export class MenuHeader {
         return this.page.locator(".ico-logout");
     }
 
+    get closeIconInNotificationBar(): Locator {
+        return this.page.locator("#bar-notification .close");
+    }
 
 
     /**
@@ -87,6 +90,11 @@ export class MenuHeader {
     async openMyAccountPage(): Promise<void> {
         await this.myAccountLink.waitFor({ state: "visible" });
         await this.myAccountLink.click();
+    }
+
+    async closeNotificationBar(): Promise<void> {
+        await this.closeIconInNotificationBar.waitFor({ state: "visible" });
+        await this.closeIconInNotificationBar.click();
     }
 
 }
