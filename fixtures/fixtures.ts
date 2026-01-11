@@ -14,6 +14,8 @@ import * as testData from "../test-data/register-data.json";
 import { ComputersPage } from "../pages/Products/ComputersPage";
 import { DesktopsPage } from "../pages/Products/DesktopsPage";
 import { ProductDetailPage } from "../pages/Products/ProductDetailPage";
+import { MenuFooter } from "../pages/MenuFooter";
+import { SearchPage } from "../pages/SearchPage";
 
 type UserData = {
     email: string;
@@ -28,6 +30,7 @@ type Fixtures = {
     loginPage: LoginPage;
     menuHeader: MenuHeader;
     homePage: HomePage;
+    menuFooter: MenuFooter;
 
     // My Account pages - cần user authenticated
     myAccountSideBarPage: MyAccountSideBarPage;
@@ -35,6 +38,7 @@ type Fixtures = {
     addressPage: AddressPage;
     changePasswordPage: ChangePasswordPage;
     myProductReviewsPage: MyProductReviewsPage;
+    searchPage: SearchPage;
 
     // Product pages
     computersPage: ComputersPage;
@@ -52,6 +56,10 @@ export const test = base.extend<Fixtures>({
 
     menuHeader: async ({ page }, use) => {
         await use(new MenuHeader(page));
+    },
+
+    menuFooter: async ({ page }, use) => {
+        await use(new MenuFooter(page));
     },
 
     registerPage: async ({ page }, use) => {
@@ -107,6 +115,11 @@ export const test = base.extend<Fixtures>({
     myProductReviewsPage: async ({ page, authenticatedUser }, use) => {
         // authenticatedUser ensures user is logged in before accessing Product Reviews
         await use(new MyProductReviewsPage(page));
+    },
+
+    searchPage: async ({ page, authenticatedUser }, use) => {
+        // authenticatedUser ensures user is logged in before accessing Search
+        await use(new SearchPage(page));
     },
 
     computersPage: async ({ page }, use) => {
